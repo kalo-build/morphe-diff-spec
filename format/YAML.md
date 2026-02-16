@@ -154,6 +154,26 @@ changes:
         type: User.ContactInfo.Email
     identifiers:
       primary: ID
+    resolved:
+      root_model: User
+      field_sources:
+        ID:
+          model: User
+          field: ID
+          type: AutoIncrement
+        FullName:
+          model: User
+          field: FullName
+          type: String
+        Email:
+          model: ContactInfo
+          field: Email
+          type: String
+      joins:
+        - from_model: User
+          relationship: ContactInfo
+          relationship_type: HasOne
+          to_model: ContactInfo
   classification: additive
 ```
 
@@ -495,6 +515,95 @@ changes:
     replacement: UserRole
   classification: additive
 ```
+
+## Entity Resolution
+
+Entities in Morphe are non-persistent data structures that resolve to underlying model fields via indirected field paths (e.g., `User.ContactInfo.Email`). In PostgreSQL, entities are analogous to SQL views rather than tables.
+
+To enable downstream consumers (such as migration generators) to produce correct output without access to the full Morphe registry, entity definitions include a `resolved` block containing pre-resolved field path information.
+
+### The `resolved` Block
+
+The `resolved` block is included inside the `definition` of entity add operations and inside `entity_snapshot` for entity-related field and relationship changes.
+
+```yaml
+resolved:
+  root_model: User
+  field_sources:
+    ID:
+      model: User
+      field: ID
+      type: AutoIncrement
+    Email:
+      model: ContactInfo
+      field: Email
+      type: String
+  joins:
+    - from_model: User
+      relationship: ContactInfo
+      relationship_type: HasOne
+      to_model: ContactInfo
+```
+
+**Fields:**
+
+- **`root_model`** (string, required): The primary model the entity is based on. Derived from the first path segment shared across entity fields. Determines the root table in SQL view generation.
+- **`field_sources`** (map, required): Map of entity field name to its resolved source:
+  - `model` (string): The model containing the terminal field
+  - `field` (string): The field name on that model
+  - `type` (string): The Morphe field type (`String`, `Integer`, `UUID`, `AutoIncrement`, etc.)
+- **`joins`** (list, required): Deduplicated list of relationship traversals needed to reach all fields:
+  - `from_model` (string): The source model of the relationship
+  - `relationship` (string): The relationship name on the source model
+  - `relationship_type` (string): The Morphe relationship type (`HasOne`, `ForOne`, `HasMany`, `ForMany`, etc.)
+  - `to_model` (string): The target model (accounting for aliases)
+
+### Entity Snapshot
+
+When an entity is modified through individual field or relationship changes (add/remove/modify field on entity), the change includes an `entity_snapshot` field containing the **full post-change entity definition** with resolution. This is necessary because downstream consumers (e.g., PostgreSQL view generators) must regenerate the complete view for any entity change.
+
+```yaml
+- operation: add
+  type: field
+  target:
+    entity: UserProfile
+    field: FullName
+  definition:
+    type: User.Name
+  entity_snapshot:
+    fields:
+      ID:
+        type: User.ID
+      Email:
+        type: User.ContactInfo.Email
+      FullName:
+        type: User.Name
+    identifiers:
+      primary: ID
+    resolved:
+      root_model: User
+      field_sources:
+        ID:
+          model: User
+          field: ID
+          type: AutoIncrement
+        Email:
+          model: ContactInfo
+          field: Email
+          type: String
+        FullName:
+          model: User
+          field: Name
+          type: String
+      joins:
+        - from_model: User
+          relationship: ContactInfo
+          relationship_type: HasOne
+          to_model: ContactInfo
+  classification: additive
+```
+
+The `entity_snapshot` contains the same structure as the entity `definition` in an add operation, including the `resolved` block. It represents the entity's state **after** the change has been applied.
 
 ## Change Classification
 

@@ -357,25 +357,49 @@ classification: additive
 
 ### Entity Deltas
 
-Changes to business data aggregation structures (`.ent` files).
+Changes to non-persistent data aggregation structures (`.ent` files). Entities resolve to underlying model fields via indirected paths (e.g., `User.ContactInfo.Email`) and are analogous to SQL views rather than tables.
+
+Entity definitions include a `resolved` block with pre-resolved field path information (root model, field sources, and joins), enabling downstream consumers to generate correct output without access to the full Morphe registry. Individual entity field or relationship changes include an `entity_snapshot` containing the full post-change resolved entity, since consumers (e.g., PostgreSQL view generators) must regenerate the complete view for any change. See [format/YAML.md](format/YAML.md) for the full `resolved` and `entity_snapshot` schema.
 
 **Supported Operations:** Add, Remove, Rename, Modify, Deprecate
 
-**Example:**
+**Example (add entity with resolution):**
 ```yaml
-operation: modify
+operation: add
 type: entity
 target:
   entity: UserProfile
-changes:
+definition:
   fields:
-    added:
-      - name: CompanyName
-        type: User.Company.Name
-    removed:
-      - name: LegacyCompanyID
-classification: breaking
+    ID:
+      type: User.ID
+    Email:
+      type: User.ContactInfo.Email
+  identifiers:
+    primary: ID
+  resolved:
+    root_model: User
+    field_sources:
+      ID:
+        model: User
+        field: ID
+        type: AutoIncrement
+      Email:
+        model: ContactInfo
+        field: Email
+        type: String
+    joins:
+      - from_model: User
+        relationship: ContactInfo
+        relationship_type: HasOne
+        to_model: ContactInfo
+classification: additive
 ```
+
+**Downstream Impact:**
+- SQL: `CREATE OR REPLACE VIEW` with `SELECT` / `LEFT JOIN`
+- TypeScript: Composite interface aggregating model fields
+- OpenAPI: Read-only schema referencing model properties
 
 ### Structure Deltas
 
