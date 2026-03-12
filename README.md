@@ -185,7 +185,7 @@ classification: breaking
 
 Indicates an artifact's properties changed without changing its identity.
 
-**Applies to:** Fields (type changes, attribute changes), Relationships (cardinality changes), Enums (entry changes)
+**Applies to:** Fields (type changes, attribute changes), Relationships (cardinality changes, attribute changes), Enums (entry changes)
 
 **Example:**
 ```yaml
@@ -480,6 +480,23 @@ definition:
   type: HasOne
 classification: additive
 ```
+
+**Example (modify relationship attributes):**
+```yaml
+operation: modify
+type: relationship
+target:
+  model: Task
+  relationship: Project
+changes:
+  attributes:
+    before: []
+    after:
+      - optional
+classification: additive
+```
+
+Changing relation attributes may alter generated output (e.g., nullable foreign keys, optional type wrappers). Adding `optional` to a previously required relation is classified as `additive`; removing `optional` from an optional relation is `breaking`.
 
 ## Diff Metadata
 

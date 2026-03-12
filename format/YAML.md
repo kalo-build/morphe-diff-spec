@@ -310,6 +310,25 @@ changes:
   classification: breaking
 ```
 
+#### Modify Relationship Attributes
+
+```yaml
+- operation: modify
+  type: relationship
+  target:
+    model: Task
+    relationship: Project
+  changes:
+    attributes:
+      before: []
+      after:
+        - optional
+  reason: "Tasks can now exist without a project"
+  classification: additive
+```
+
+Adding `optional` to a required relation is `additive` (existing data remains valid). Removing `optional` from an optional relation is `breaking` (null values may exist).
+
 #### Modify Enum Entries
 
 ```yaml
@@ -866,7 +885,7 @@ Morphe Diff artifacts reference Morphe specification constructs:
 - **Field Types**: Must be valid Morphe field types (`String`, `Integer`, etc.) or enum references
 - **Relationship Types**: Must be valid Morphe relationship types (`HasOne`, `ForMany`, etc.)
 - **Identifiers**: Must reference existing or newly added identifier definitions
-- **Attributes**: Free-form attributes as defined in Morphe
+- **Attributes**: Free-form attributes as defined in Morphe (field-level and relation-level)
 
 ## Validation Rules
 
